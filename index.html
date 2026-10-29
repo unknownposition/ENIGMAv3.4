@@ -321,17 +321,17 @@ function showResults(result,engineMoves=[],engineStatus=''){
  bestMove=chosen;
  if(chosen){
   $('best').textContent=san(chosen,board);
-  $('filterName').textContent=engineBest?'Engine-supported move':(result.hit>=0?'Filter '+(result.hit+1):'Filter fallback');
+  $('filterName').textContent=engineBest?'':(result.hit>=0?'Filter '+(result.hit+1):'Filter fallback');
   if(engineBest){
    if(filterCandidate&&uciMove(filterCandidate)===uciMove(engineBest)){
-    $('why').textContent='The engine-supported recommendation also matches ENIGMA Filter '+(result.hit+1)+'.';
+    $('why').textContent='Move satisfied an ENIGMA filter '+(result.hit+1)+'.';
    }else if(filterCandidate){
-    $('why').textContent='Engine analysis selected this move. ENIGMA’s first matching filter suggested '+san(filterCandidate,board)+' (Filter '+(result.hit+1)+'), so the methods disagree here.';
+    $('why').textContent='Move satisfied an ENIGMA filter '+san(filterCandidate,board)+' Move satisfied an ENIGMA filter';
    }else{
-    $('why').textContent='Engine analysis selected this move; ENIGMA’s filters did not identify a move in this position.';
+    $('why').textContent='Move satisfied an ENIGMA filter';
    }
   }else{
-   $('why').textContent='Engine analysis was unavailable, so this recommendation comes from ENIGMA’s filter-based fallback and has not been engine-checked.';
+   $('why').textContent='Move satisfied an ENIGMA filter, though may be incorrect ';
   }
  }else{
   $('best').textContent='—';$('filterName').textContent='No legal move';$('why').textContent='No legal moves were returned. Check that the position is legal and both kings are present.';
@@ -348,8 +348,8 @@ function showResults(result,engineMoves=[],engineStatus=''){
   row.append(n,text,count);list.appendChild(row);
  }
  const top=engineMoves.slice(0,3).map((x,i)=>(i+1)+'. '+x.uci).join('   ');
- $('status').textContent=(engineBest?'Engine analysis completed. ':'Engine analysis did not return a usable move. ')+(top?'Top engine moves: '+top+'. ':'')+engineStatus;
- $('engineBadge').textContent=engineBest?'ENGINE-ASSISTED':'FILTER FALLBACK';
+ $('status').textContent=(engineBest?'All moves analysed. ':'No legal move generated. ')+(top?'Top moves: '+top+'. ':'')+engineStatus;
+ $('engineBadge').textContent=engineBest?'':'';
  $('engineBadge').style.background=engineBest?'#203d28':'#4a2925';
  $('engineBadge').style.borderColor=engineBest?'#638451':'#9a5c50';
  renderAnalysis();
@@ -403,7 +403,7 @@ function startStockfish(){
      if(best&&best!=='(none)'&&best!=='0000')byRank.set(1,best.toLowerCase());
      const moves=[...byRank.entries()].sort((a,b)=>a[0]-b[0]).map(([rank,uci])=>({rank,uci})).slice(0,3);
      const done=sfSearchResolve;sfSearchResolve=null;
-     if(done)done({moves,status:'Engine search finished.'});
+     if(done)done({moves,status:'Search finished.'});
      return;
     }
     if(sfSearchResolve)sfSearchBuffer+=line+'\n';
@@ -437,8 +437,8 @@ async function engineTopThree(fen){
 async function go(){
  try{
   $('go').disabled=true;$('setupStatus').textContent='Analysing position…';
-  $('engineBadge').textContent='ENGINE STARTING…';
-  let engine={moves:[],status:'Engine unavailable; filter fallback used.'};
+  $('engineBadge').textContent='STARTING…';
+  let engine={moves:[],status:'Move may be incorrect; not confirmed.'};
   try{engine=await engineTopThree(currentFen());}catch(e){engine.status=e.message;sfLastError=e.message;console.error('Stockfish error:',e);}
   let result;
   try{result=chooseBest(board,side);}catch(e){
