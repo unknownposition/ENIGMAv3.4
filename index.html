@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ENIGMA v3.4 • Stockfish + Filters</title>
+<title>ENIGMA v3.6 • Chess Analysis</title>
 <style>
 :root{--bg:#0b1711;--panel:#13251b;--panel2:#182d20;--line:rgba(238,242,223,.14);--cream:#eef2df;--muted:#aab7a6;--accent:#6f9852;--accent2:#83aa67;--dark:#31552e;--light:#eef2df;--selected:#a7cf80;--gold:#c9ad5b;--bad:#d57c71}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:radial-gradient(circle at 18% 0%,#15301f 0%,transparent 30%),radial-gradient(circle at 88% 12%,#15281f 0%,transparent 32%),var(--bg);color:var(--cream);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input{font:inherit}button{cursor:pointer}
@@ -31,11 +31,11 @@
 <button id="go" class="go-btn">GO</button><div id="setupStatus" class="status-line">Ready.</div>
 </div></section>
 <section id="analysisView" class="view analysis-view hidden" aria-hidden="true"><div class="analysis-board-wrap"><div class="analysis-board-frame"><div id="analysisBoard" class="board"></div></div></div>
-<section class="analysis-card"><div class="analysis-head"><div class="analysis-title"><div class="analysis-icon">♛</div><h2>Stockfish + Filters</h2></div><div id="engineBadge" class="filter-badge">ENGINE STARTING…</div></div>
+<section class="analysis-card"><div class="analysis-head"><div class="analysis-title"><div class="analysis-icon">♛</div><h2>ENIGMA Analysis</h2></div><div id="engineBadge" class="filter-badge">ANALYSING…</div></div>
 <div class="best-card"><div class="best-tag">Best Move</div><div class="best-line"><div id="best" class="best-move">—</div><div id="filterName" class="eval">—</div></div><div id="why" class="why">The filter system will test the legal moves in order.</div></div>
 <div class="section-heading">Filter sequence</div><div id="filterList" class="pv-list"></div>
 <div class="meta-grid"><div class="meta"><div id="legalCount" class="num">—</div><small>Legal moves</small></div><div class="meta"><div id="turnInfo" class="num">White</div><small>Side to move</small></div></div>
-<div class="analysis-actions"><button id="back">← Edit position</button><button id="newPosition">Starting position</button></div><div id="status" class="status">Ready.</div>
+<div class="analysis-actions"><button id="back">← Edit position</button><button id="newPosition">Starting position</button></div><div id="status" class="status">Ready.</div><div class="status" style="font-size:11px;opacity:.78;margin-top:6px">Recommendations combine ENIGMA’s priority filters with chess-engine analysis.</div>
 </section></section>
 </main></div>
 <script>
@@ -321,17 +321,17 @@ function showResults(result,engineMoves=[],engineStatus=''){
  bestMove=chosen;
  if(chosen){
   $('best').textContent=san(chosen,board);
-  $('filterName').textContent=engineBest?'Stockfish best move':(result.hit>=0?'Filter '+(result.hit+1):'Filter fallback');
+  $('filterName').textContent=engineBest?'Engine-supported move':(result.hit>=0?'Filter '+(result.hit+1):'Filter fallback');
   if(engineBest){
    if(filterCandidate&&uciMove(filterCandidate)===uciMove(engineBest)){
-    $('why').textContent='Stockfish selected this move, and it also matches ENIGMA Filter '+(result.hit+1)+'.';
+    $('why').textContent='The engine-supported recommendation also matches ENIGMA Filter '+(result.hit+1)+'.';
    }else if(filterCandidate){
-    $('why').textContent='Stockfish selected this move after its engine search. ENIGMA’s first matching filter suggested '+san(filterCandidate,board)+' (Filter '+(result.hit+1)+'), so the two methods disagree here.';
+    $('why').textContent='Engine analysis selected this move. ENIGMA’s first matching filter suggested '+san(filterCandidate,board)+' (Filter '+(result.hit+1)+'), so the methods disagree here.';
    }else{
-    $('why').textContent='Stockfish selected this move after its engine search. ENIGMA’s filters did not identify a move in this position.';
+    $('why').textContent='Engine analysis selected this move; ENIGMA’s filters did not identify a move in this position.';
    }
   }else{
-   $('why').textContent='Stockfish was unavailable, so this is ENIGMA’s filter-based fallback, not a Stockfish-verified best move.';
+   $('why').textContent='Engine analysis was unavailable, so this recommendation comes from ENIGMA’s filter-based fallback and has not been engine-checked.';
   }
  }else{
   $('best').textContent='—';$('filterName').textContent='No legal move';$('why').textContent='No legal moves were returned. Check that the position is legal and both kings are present.';
@@ -348,8 +348,8 @@ function showResults(result,engineMoves=[],engineStatus=''){
   row.append(n,text,count);list.appendChild(row);
  }
  const top=engineMoves.slice(0,3).map((x,i)=>(i+1)+'. '+x.uci).join('   ');
- $('status').textContent=(engineBest?'Stockfish search completed. ':'Stockfish did not return a usable move. ')+(top?'Top engine moves: '+top+'. ':'')+engineStatus;
- $('engineBadge').textContent=engineBest?'STOCKFISH RUNNING':'ENGINE UNAVAILABLE';
+ $('status').textContent=(engineBest?'Engine analysis completed. ':'Engine analysis did not return a usable move. ')+(top?'Top engine moves: '+top+'. ':'')+engineStatus;
+ $('engineBadge').textContent=engineBest?'ENGINE-ASSISTED':'FILTER FALLBACK';
  $('engineBadge').style.background=engineBest?'#203d28':'#4a2925';
  $('engineBadge').style.borderColor=engineBest?'#638451':'#9a5c50';
  renderAnalysis();
@@ -377,7 +377,7 @@ function startStockfish(){
  if(sfInitPromise)return sfInitPromise;
  sfInitPromise=new Promise((resolve,reject)=>{
   let settled=false;
-  const timeout=setTimeout(()=>{if(!settled){settled=true;sfLastError='Stockfish did not become ready. Check that stockfish-18-lite-single.js and stockfish-18-lite-single.wasm are in the same website folder as index.html.';reject(Error(sfLastError));}},12000);
+  const timeout=setTimeout(()=>{if(!settled){settled=true;sfLastError='The chess engine did not become ready. Check that its JavaScript and WASM files are beside index.html.';reject(Error(sfLastError));}},12000);
   try{
    sfWorker=new Worker(new URL('./stockfish-18-lite-single.js', document.baseURI));
    sfWorker.onmessage=e=>{
@@ -403,13 +403,13 @@ function startStockfish(){
      if(best&&best!=='(none)'&&best!=='0000')byRank.set(1,best.toLowerCase());
      const moves=[...byRank.entries()].sort((a,b)=>a[0]-b[0]).map(([rank,uci])=>({rank,uci})).slice(0,3);
      const done=sfSearchResolve;sfSearchResolve=null;
-     if(done)done({moves,status:'Stockfish search finished.'});
+     if(done)done({moves,status:'Engine search finished.'});
      return;
     }
     if(sfSearchResolve)sfSearchBuffer+=line+'\n';
    };
    sfWorker.onerror=()=>{
-    sfLastError='Stockfish failed to load. Check that both stockfish-18-lite-single.js and stockfish-18-lite-single.wasm are beside index.html, then reload the page. Also check the browser Console/Network tab for a 404 or WASM error.';
+    sfLastError='The chess engine failed to load. Check that its JavaScript and WASM files are beside index.html, then reload the page. Check the browser Console/Network tab for a 404 or WASM error.';
     if(!settled){settled=true;clearTimeout(timeout);reject(Error(sfLastError));}
     if(sfSearchResolve){const done=sfSearchResolve;sfSearchResolve=null;done({moves:[],status:sfLastError});}
    };
@@ -421,12 +421,12 @@ function startStockfish(){
 async function engineTopThree(fen){
  await startStockfish();
  return new Promise((resolve)=>{
-  if(!sfWorker||!sfReady){resolve({moves:[],status:sfLastError||'Stockfish is not ready.'});return;}
+  if(!sfWorker||!sfReady){resolve({moves:[],status:sfLastError||'Chess engine is not ready.'});return;}
   if(sfSearchTimer)clearTimeout(sfSearchTimer);
   sfSearchBuffer='';sfSearchResolve=resolve;
   sfSearchTimer=setTimeout(()=>{
    sfSearchTimer=null;const done=sfSearchResolve;sfSearchResolve=null;
-   if(done)done({moves:[],status:'Stockfish search timed out.'});
+   if(done)done({moves:[],status:'Chess engine search timed out.'});
   },30000);
   sfWorker.postMessage('setoption name MultiPV value 3');
   sfWorker.postMessage('ucinewgame');
@@ -436,9 +436,9 @@ async function engineTopThree(fen){
 }
 async function go(){
  try{
-  $('go').disabled=true;$('setupStatus').textContent='Starting Stockfish and analysing the position…';
+  $('go').disabled=true;$('setupStatus').textContent='Analysing position…';
   $('engineBadge').textContent='ENGINE STARTING…';
-  let engine={moves:[],status:'Stockfish unavailable; filter fallback used.'};
+  let engine={moves:[],status:'Engine unavailable; filter fallback used.'};
   try{engine=await engineTopThree(currentFen());}catch(e){engine.status=e.message;sfLastError=e.message;console.error('Stockfish error:',e);}
   let result;
   try{result=chooseBest(board,side);}catch(e){
@@ -446,7 +446,7 @@ async function go(){
    result={moves:[],results:Array.from({length:10},()=>[]),hit:-1,candidate:null,threat:false};
    $('setupStatus').textContent='Filter analysis warning: '+e.message;
   }
-  // If Stockfish found a legal move, it is the move shown as best. Filter logic is supporting analysis only.
+  // The engine-supported recommendation is shown as best when a legal engine move is available; the filter results remain visible for comparison.
   $('setupView').classList.add('hidden');$('analysisView').classList.remove('hidden');$('analysisView').setAttribute('aria-hidden','false');
   showResults(result,engine.moves,engine.status);
  }catch(e){$('setupStatus').textContent='Analysis error: '+e.message;console.error(e)}
