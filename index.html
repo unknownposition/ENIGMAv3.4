@@ -47,18 +47,18 @@ const glyph={wp:'♙',wn:'♘',wb:'♗',wr:'♖',wq:'♕',wk:'♔',bp:'♟',bn:'
 const palette=[['wq','Queen'],['wr','Rook'],['wb','Bishop'],['wn','Knight'],['wp','Pawn'],['wk','King'],['bq','Queen'],['br','Rook'],['bb','Bishop'],['bn','Knight'],['bp','Pawn'],['bk','King']];
 const values={p:1,n:3,b:3,r:5,q:9,k:100};
 const filterNames=[
- 'Does any  force checkmate immediately?',
- 'Does any checking  lead to a short mating sequence?',
- 'Does the opponent have a checkmate? If yes, does any  avoid checkmate?',
- 'Does any non-checking  lead to a short mating sequence?',
- 'Does any  allow promotion to a piece?',
- 'Does any  give a check that does not lose material?',
- 'Does any  gain undefended material or defend a hanging piece?',
- 'Does any  attack a piece?',
- 'Does any  castle?',
- 'Does any  develop a piece?'
+ 'Does any move force checkmate immediately?',
+ 'Does any checking move lead to a short mating sequence?',
+ 'Does the opponent have a checkmate? If yes, does any move avoid checkmate?',
+ 'Does any non-checking move lead to a short mating sequence?',
+ 'Does any move allow promotion to a piece?',
+ 'Does any move give a check that does not lose material?',
+ 'Does any move gain undefended material or defend a hanging piece?',
+ 'Does any move attack a piece?',
+ 'Does any move castle?',
+ 'Does any move develop a piece?'
 ];
-let board=[],tool=null,flipped=false,side='w',selectedSquare=null,last=null,best=null,castling='KQkq',epSquare=null;
+let board=[],tool=null,flipped=false,side='w',selectedSquare=null,last=null,bestMove=null,castling='KQkq',epSquare=null;
 const $=id=>document.getElementById(id);
 const idx=(r,c)=>r*8+c, inBoard=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
 function cloneBoard(b){return b.slice()}
@@ -79,15 +79,15 @@ function isSquareAttacked(b,sq,byColor){
  return false;
 }
 function inCheck(b,color){const k=findKing(b,color);return k<0||isSquareAttacked(b,k,color==='w'?'b':'w')}
-function make(b,m){const n=cloneBoard(b);const p=n[m.from];n[m.from]=null;if(m.enPassant)n[m.captureSquare]=null;n[m.to]=m.promotion?m.color+m.promotion:p;if(m.castle){const rank=Math.floor(m.from/8);if(m.castle==='K'){n[idx(rank,7)]=null;n[idx(rank,5)]=m.color+'r'}else{n[idx(rank,0)]=null;n[idx(rank,3)]=m.color+'r'}}return n}
+function makeMove(b,m){const n=cloneBoard(b);const p=n[m.from];n[m.from]=null;if(m.enPassant)n[m.captureSquare]=null;n[m.to]=m.promotion?m.color+m.promotion:p;if(m.castle){const rank=Math.floor(m.from/8);if(m.castle==='K'){n[idx(rank,7)]=null;n[idx(rank,5)]=m.color+'r'}else{n[idx(rank,0)]=null;n[idx(rank,3)]=m.color+'r'}}return n}
 
-function pseudos(b,color){
-  const s=[];
+function pseudoMoves(b,color){
+  const moves=[];
   for(let from=0;from<64;from++){
     const piece=b[from];
     if(!piece||piece[0]!==color) continue;
     const type=piece[1], r=Math.floor(from/8), c=from%8;
-    const add=(to,extra={})=>{ if(to<0||to>=64)return; const target=b[to]; if(target&&target[0]===color)return; s.push({from,to,color,piece:type,capture:target||null,...extra}); };
+    const add=(to,extra={})=>{ if(to<0||to>=64)return; const target=b[to]; if(target&&target[0]===color)return; moves.push({from,to,color,piece:type,capture:target||null,...extra}); };
     if(type==='p'){
       const dr=color==='w'?-1:1, start=color==='w'?6:1, promoRow=color==='w'?0:7;
       const oneR=r+dr;
@@ -120,10 +120,10 @@ function pseudos(b,color){
       }
     }
   }
-  return s;
+  return moves;
 }
 
-function applyState(m){
+function applyStateMove(m){
   const p=board[m.from];
   if(p==='wk')castling=castling.replace('K','').replace('Q','');
   if(p==='bk')castling=castling.replace('k','').replace('q','');
@@ -138,24 +138,24 @@ function applyState(m){
   epSquare=null;
   if(p&&p[1]==='p'&&Math.abs(m.to-m.from)===16)epSquare=(m.to+m.from)/2;
 }
-function legals(b,color){return pseudos(b,color).filter(m=>!inCheck(make(b,m),color))}
-function isCheckmate(b,color){return inCheck(b,color)&&legals(b,color).length===0}
-function isStalemate(b,color){return !inCheck(b,color)&&legals(b,color).length===0}
+function legalMoves(b,color){return pseudoMoves(b,color).filter(m=>!inCheck(makeMove(b,m),color))}
+function isCheckmate(b,color){return inCheck(b,color)&&legalMoves(b,color).length===0}
+function isStalemate(b,color){return !inCheck(b,color)&&legalMoves(b,color).length===0}
 function material(b,color){let n=0;for(const p of b)if(p&&p[0]===color&&p[1]!=='k')n+=values[p[1]];return n}
 function defendedBy(b,sq,color){return isSquareAttacked(b,sq,color)}
-function attackedAfter(b,m,color){return isSquareAttacked(b,m.to,color==='w'?'b':'w')}
-function GivesCheck(b,m){return inCheck(make(b,m),m.color==='w'?'b':'w')}
-function LosesMaterial(b,m){const before=material(b,m.color);const after=material(make(b,m),m.color);return after<before}
+function attackedAfterMove(b,m,color){return isSquareAttacked(b,m.to,color==='w'?'b':'w')}
+function moveGivesCheck(b,m){return inCheck(makeMove(b,m),m.color==='w'?'b':'w')}
+function moveLosesMaterial(b,m){const before=material(b,m.color);const after=material(makeMove(b,m),m.color);return after<before}
 
-function Safety(b,m){
- // Estimate whether the d piece is left hanging after the .
+function moveSafety(b,m){
+ // Estimate whether the moved piece is left hanging after the move.
  // This is a lightweight tactical heuristic, not a full exchange evaluation.
- const after=make(b,m);
+ const after=makeMove(b,m);
  const color=m.color, opp=color==='w'?'b':'w';
  const piece=after[m.to];
  if(!piece) return {safe:false, attacked:false, defended:false, reason:'No piece on destination'};
- // A legal  should not leave the king in check; king safety is handled by legals().
- if(piece[1]==='k') return {safe:!inCheck(after,color), attacked:false, defended:false, reason:'King '};
+ // A legal move should not leave the king in check; king safety is handled by legalMoves().
+ if(piece[1]==='k') return {safe:!inCheck(after,color), attacked:false, defended:false, reason:'King move'};
  const attacked=isSquareAttacked(after,m.to,opp);
  const defended=isSquareAttacked(after,m.to,color);
  // If the piece is attacked but undefended, consider it unsafe.
@@ -166,13 +166,13 @@ function Safety(b,m){
 }
 function hasUndefendedGain(b,m){
  const target=b[m.to];
- if(target&&target[0]!==m.color&&typeOf(target)!=='k'){const enemy=target[0];const targetVal=values[target[1]];const nb=make(b,m);const targetSq=m.to;const defended=isSquareAttacked(b,targetSq,enemy);return !defended||values[m.piece]<targetVal}
- // Also detect a  that wins another hanging enemy piece by attacking it with a defended piece.
- const nb=make(b,m);for(let sq=0;sq<64;sq++){const p=nb[sq];if(p&&p[0]!==m.color&&p[1]!=='k'&&!isSquareAttacked(nb,sq,p[0]))return true}
+ if(target&&target[0]!==m.color&&typeOf(target)!=='k'){const enemy=target[0];const targetVal=values[target[1]];const nb=makeMove(b,m);const targetSq=m.to;const defended=isSquareAttacked(b,targetSq,enemy);return !defended||values[m.piece]<targetVal}
+ // Also detect a move that wins another hanging enemy piece by attacking it with a defended piece.
+ const nb=makeMove(b,m);for(let sq=0;sq<64;sq++){const p=nb[sq];if(p&&p[0]!==m.color&&p[1]!=='k'&&!isSquareAttacked(nb,sq,p[0]))return true}
  return false;
 }
 function defendsHanging(b,m){
- const before=b, after=make(b,m), color=m.color, opp=color==='w'?'b':'w';
+ const before=b, after=makeMove(b,m), color=m.color, opp=color==='w'?'b':'w';
  for(let sq=0;sq<64;sq++){
   const p=before[sq], q=after[sq];
   if(p&&p[0]===color&&p[1]!=='k'&&q===p){
@@ -186,7 +186,7 @@ function defendsHanging(b,m){
 }
 function attacksAPiece(b,m){
  if(m.capture)return false;
- const before=b, after=make(b,m), opp=m.color==='w'?'b':'w';
+ const before=b, after=makeMove(b,m), opp=m.color==='w'?'b':'w';
  for(let sq=0;sq<64;sq++){const p=after[sq];if(p&&p[0]===opp&&p[1]!=='k'&&isSquareAttacked(after,sq,m.color)&&!isSquareAttacked(before,sq,m.color))return true}
  return false;
 }
@@ -197,21 +197,21 @@ function developsPiece(b,m){
  return !backSquares.includes(m.to);
 }
 function san(m,b){if(m.castle)return m.castle==='K'?'O-O':'O-O-O';const t=m.piece==='p'?'':m.piece.toUpperCase();const cap=m.capture?'x':' ';let s=t+(cap==='x'?'x':'')+squareName(m.to);if(m.promotion)s+='='+m.promotion.toUpperCase();return s}
-function opponentHasMateThreat(b,color){const opp=color==='w'?'b':'w';for(const m of legals(b,opp)){if(isCheckmate(make(b,m),color))return true}return false}
+function opponentHasMateThreat(b,color){const opp=color==='w'?'b':'w';for(const m of legalMoves(b,opp)){if(isCheckmate(makeMove(b,m),color))return true}return false}
 function opponentHasMateThreatAfter(b,color){return opponentHasMateThreat(b,color)}
 function hasMateInOne(b,color){
- const ms=legals(b,color);
- return ms.some(m=>isCheckmate(make(b,m),color==='w'?'b':'w'));
+ const ms=legalMoves(b,color);
+ return ms.some(m=>isCheckmate(makeMove(b,m),color==='w'?'b':'w'));
 }
-function matingRepliesAfter(b,,color){
- const after=make(b,),opp=color==='w'?'b':'w';
- const replies=legals(after,opp);
+function matingRepliesAfter(b,move,color){
+ const after=makeMove(b,move),opp=color==='w'?'b':'w';
+ const replies=legalMoves(after,opp);
  if(!replies.length)return false;
- // A  qualifies when every legal reply allows an immediate mate on the next .
+ // A move qualifies when every legal reply allows an immediate mate on the next move.
  return replies.every(reply=>{
-  const afterReply=make(after,reply);
-  const myReplies=legals(afterReply,color);
-  return myReplies.some(fin=>isCheckmate(make(afterReply,fin),opp));
+  const afterReply=makeMove(after,reply);
+  const myReplies=legalMoves(afterReply,color);
+  return myReplies.some(fin=>isCheckmate(makeMove(afterReply,fin),opp));
  });
 }
 function opponentMateThreat(b,color){
@@ -219,48 +219,48 @@ function opponentMateThreat(b,color){
  return hasMateInOne(b,opp);
 }
 function avoidsMateThreat(b,m,color){
- const after=make(b,m),opp=color==='w'?'b':'w';
+ const after=makeMove(b,m),opp=color==='w'?'b':'w';
  return !hasMateInOne(after,opp);
 }
-function filters(b,color,s){
+function filterMoves(b,color,moves){
  const results=[];
  // 1. Immediate checkmate.
- results.push(s.filter(m=>isCheckmate(make(b,m),color==='w'?'b':'w')));
- // 2. A checking  that starts a forced mating sequence (mate after every legal reply).
- results.push(s.filter(m=>GivesCheck(b,m)&&matingRepliesAfter(b,m,color)));
+ results.push(moves.filter(m=>isCheckmate(makeMove(b,m),color==='w'?'b':'w')));
+ // 2. A checking move that starts a forced mating sequence (mate after every legal reply).
+ results.push(moves.filter(m=>moveGivesCheck(b,m)&&matingRepliesAfter(b,m,color)));
  // 3. Opponent currently threatens mate in one; candidate prevents it.
  const threat=opponentMateThreat(b,color);
- results.push(threat?s.filter(m=>avoidsMateThreat(b,m,color)):[]);
- // 4. A non-checking  that creates a forced mating sequence.
- results.push(s.filter(m=>!GivesCheck(b,m)&&matingRepliesAfter(b,m,color)));
+ results.push(threat?moves.filter(m=>avoidsMateThreat(b,m,color)):[]);
+ // 4. A non-checking move that creates a forced mating sequence.
+ results.push(moves.filter(m=>!moveGivesCheck(b,m)&&matingRepliesAfter(b,m,color)));
  // 5. Promotion.
- results.push(s.filter(m=>!!m.promotion));
+ results.push(moves.filter(m=>!!m.promotion));
  // 6. Check without losing material, with a basic safety check.
- results.push(s.filter(m=>GivesCheck(b,m)&&!LosesMaterial(b,m)&&Safety(b,m).safe));
+ results.push(moves.filter(m=>moveGivesCheck(b,m)&&!moveLosesMaterial(b,m)&&moveSafety(b,m).safe));
  // 7. Gain undefended material or defend a hanging piece.
- results.push(s.filter(m=>hasUndefendedGain(b,m)||defendsHanging(b,m)));
+ results.push(moves.filter(m=>hasUndefendedGain(b,m)||defendsHanging(b,m)));
  // 8. Newly attacks an opponent piece.
- results.push(s.filter(m=>attacksAPiece(b,m)));
+ results.push(moves.filter(m=>attacksAPiece(b,m)));
  // 9. Castling.
- results.push(s.filter(m=>!!m.castle));
+ results.push(moves.filter(m=>!!m.castle));
  // 10. Develop a knight or bishop.
- results.push(s.filter(m=>developsPiece(b,m)));
+ results.push(moves.filter(m=>developsPiece(b,m)));
  return {results,threat};
 }
 function materialDelta(b,m){
  const color=m.color,opp=color==='w'?'b':'w';
  const before=material(b,color)-material(b,opp);
- const afterBoard=make(b,m);
+ const afterBoard=makeMove(b,m);
  const after=material(afterBoard,color)-material(afterBoard,opp);
  return after-before;
 }
 function tieBreak(candidates,b,filterIndex){
  const score=m=>{
   const delta=materialDelta(b,m),captureValue=m.capture?(values[typeOf(m.capture)]||0):0;
-  const safety=Safety(b,m).safe?1:0;
+  const safety=moveSafety(b,m).safe?1:0;
   const promotion=m.promotion?({q:9,r:5,b:3,n:3}[m.promotion]||0):0;
-  const check=GivesCheck(b,m)?1:0;
-  const attackedValue=(()=>{const nb=make(b,m);let v=0;for(let i=0;i<64;i++){const p=nb[i];if(p&&p[0]!==m.color&&p[1]!=='k'&&isSquareAttacked(nb,i,m.color))v=Math.max(v,values[p[1]]||0)}return v})();
+  const check=moveGivesCheck(b,m)?1:0;
+  const attackedValue=(()=>{const nb=makeMove(b,m);let v=0;for(let i=0;i<64;i++){const p=nb[i];if(p&&p[0]!==m.color&&p[1]!=='k'&&isSquareAttacked(nb,i,m.color))v=Math.max(v,values[p[1]]||0)}return v})();
   if(filterIndex===0)return check*100000+captureValue*100+delta*10+safety;
   if(filterIndex===1||filterIndex===3)return check*100000+safety*10+delta;
   if(filterIndex===4)return promotion*100+safety*10+delta;
@@ -269,20 +269,20 @@ function tieBreak(candidates,b,filterIndex){
   if(filterIndex===7)return attackedValue*20+safety*5+delta;
   return safety*10+delta+check;
  };
- return candidates.slice().sort((a,bm)=>score(bm)-score(a)||uci(a).localeCompare(uci(bm)))[0]||null;
+ return candidates.slice().sort((a,bm)=>score(bm)-score(a)||uciMove(a).localeCompare(uciMove(bm)))[0]||null;
 }
 function chooseBest(b,color){
- const s=legals(b,color),{results,threat}=filters(b,color,s);
+ const moves=legalMoves(b,color),{results,threat}=filterMoves(b,color,moves);
  let hit=-1,candidate=null;
  for(let i=0;i<results.length;i++){if(results[i].length){hit=i;candidate=tieBreak(results[i],b,i);break}}
- return {s,results,hit,candidate,threat};
+ return {moves,results,hit,candidate,threat};
 }
 function squareMarkup(containerId){const b=$(containerId);b.innerHTML='';for(let i=0;i<64;i++){const d=document.createElement('div');d.className='sq '+(((Math.floor(i/8)+i%8)%2===0)?'light':'dark');b.appendChild(d)}}
-function renderInto(containerId){const b=$(containerId),cells=[...b.children];for(let i=0;i<64;i++){const idx2=flipped?63-i:i,d=cells[i];d.dataset.index=String(idx2);d.className='sq '+(((Math.floor(idx2/8)+idx2%8)%2===0)?'light':'dark');if(last&&(idx2===last.from||idx2===last.to))d.classList.add('last');if(best&&(idx2===best.from||idx2===best.to))d.classList.add('best');d.innerHTML='';const p=board[idx2];if(p){const s=document.createElement('span');s.className='piece '+(p[0]==='w'?'white-piece':'black-piece');s.textContent=glyph[p];d.appendChild(s)}if(i%8===0){const r=document.createElement('span');r.className='coord rank';r.textContent=ranks[Math.floor(idx2/8)];d.appendChild(r)}if(Math.floor(i/8)===7){const f=document.createElement('span');f.className='coord file';f.textContent=files[idx2%8];d.appendChild(f)}if(selectedSquare===idx2)d.classList.add('click-selected')}}
+function renderInto(containerId){const b=$(containerId),cells=[...b.children];for(let i=0;i<64;i++){const idx2=flipped?63-i:i,d=cells[i];d.dataset.index=String(idx2);d.className='sq '+(((Math.floor(idx2/8)+idx2%8)%2===0)?'light':'dark');if(last&&(idx2===last.from||idx2===last.to))d.classList.add('last');if(bestMove&&(idx2===bestMove.from||idx2===bestMove.to))d.classList.add('best');d.innerHTML='';const p=board[idx2];if(p){const s=document.createElement('span');s.className='piece '+(p[0]==='w'?'white-piece':'black-piece');s.textContent=glyph[p];d.appendChild(s)}if(i%8===0){const r=document.createElement('span');r.className='coord rank';r.textContent=ranks[Math.floor(idx2/8)];d.appendChild(r)}if(Math.floor(i/8)===7){const f=document.createElement('span');f.className='coord file';f.textContent=files[idx2%8];d.appendChild(f)}if(selectedSquare===idx2)d.classList.add('click-selected')}}
 function renderSetup(){renderInto('board');$('setupStatus').textContent='Ready.'}
 function renderAnalysis(){renderInto('analysisBoard')}
-function clearTools(){tool=null;selectedSquare=null;document.querySelectorAll('.piece-btn,.tool-btn').forEach(x=>x.classList.re('selected','active'));$('toolStatus').textContent=' / place pieces'}
-function paletteInit(){const p=$('palette');palette.forEach(([k,name])=>{const b=document.createElement('button');b.className='piece-btn';b.title=(k[0]==='w'?'White ':'Black ')+name;const s=document.createElement('span');s.className='palette-glyph '+(k[0]==='w'?'white-piece':'black-piece');s.textContent=glyph[k];b.appendChild(s);b.onclick=()=>{tool=k;selectedSquare=null;$('toolStatus').textContent=(k[0]==='w'?'White ':'Black ')+name;document.querySelectorAll('.piece-btn,.tool-btn').forEach(x=>x.classList.re('selected','active'));b.classList.add('selected')};p.appendChild(b)})}
+function clearTools(){tool=null;selectedSquare=null;document.querySelectorAll('.piece-btn,.tool-btn').forEach(x=>x.classList.remove('selected','active'));$('toolStatus').textContent='Move / place pieces'}
+function paletteInit(){const p=$('palette');palette.forEach(([k,name])=>{const b=document.createElement('button');b.className='piece-btn';b.title=(k[0]==='w'?'White ':'Black ')+name;const s=document.createElement('span');s.className='palette-glyph '+(k[0]==='w'?'white-piece':'black-piece');s.textContent=glyph[k];b.appendChild(s);b.onclick=()=>{tool=k;selectedSquare=null;$('toolStatus').textContent=(k[0]==='w'?'White ':'Black ')+name;document.querySelectorAll('.piece-btn,.tool-btn').forEach(x=>x.classList.remove('selected','active'));b.classList.add('selected')};p.appendChild(b)})}
 function bindBoard(id){
  const b=$(id); let dragFrom=null, suppressClick=false;
  b.addEventListener('click',e=>{
@@ -291,7 +291,7 @@ function bindBoard(id){
   if(tool==='erase'){board[i]=null;selectedSquare=null;last=null;renderSetup();return;}
   if(tool){board[i]=tool;selectedSquare=null;last=null;renderSetup();return;}
   if(selectedSquare!==null){
-   if(selectedSquare!==i && board[selectedSquare]){const m={from:selectedSquare,to:i,color:side,piece:board[selectedSquare][1],capture:board[i]||null};board[i]=board[selectedSquare];board[selectedSquare]=null;applyState(m);last={from:m.from,to:m.to};}
+   if(selectedSquare!==i && board[selectedSquare]){const m={from:selectedSquare,to:i,color:side,piece:board[selectedSquare][1],capture:board[i]||null};board[i]=board[selectedSquare];board[selectedSquare]=null;applyStateMove(m);last={from:m.from,to:m.to};}
    selectedSquare=null;renderSetup();return;
   }
   if(board[i]){selectedSquare=i;renderSetup();}
@@ -303,14 +303,14 @@ function bindBoard(id){
  b.addEventListener('pointerup',e=>{
   if(dragFrom===null)return;
   const from=dragFrom; dragFrom=null; const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.sq');
-  if(hit && hit.closest('.board')){const to=Number(hit.dataset.index);if(to!==from && board[from]){const m={from,to,color:side,piece:board[from][1],capture:board[to]||null};board[to]=board[from];board[from]=null;applyState(m);selectedSquare=null;last={from,to};suppressClick=true;renderSetup();return;}}
+  if(hit && hit.closest('.board')){const to=Number(hit.dataset.index);if(to!==from && board[from]){const m={from,to,color:side,piece:board[from][1],capture:board[to]||null};board[to]=board[from];board[from]=null;applyStateMove(m);selectedSquare=null;last={from,to};suppressClick=true;renderSetup();return;}}
   suppressClick=true;selectedSquare=from;renderSetup();
  });
  b.addEventListener('pointercancel',()=>{dragFrom=null;});
  b.addEventListener('contextmenu',e=>{e.preventDefault();const sq=e.target.closest('.sq');if(!sq)return;const i=Number(sq.dataset.index);board[i]=null;selectedSquare=null;last=null;renderSetup();});
 }
 
-function startingPosition(){board=parseFenBoard(initialFen);side='w';castling='KQkq';epSquare=null;flipped=false;last=null;best=null;clearTools();$('whiteTurn').classList.add('active');$('blackTurn').classList.re('active');$('analysisView').classList.add('hidden');$('analysisView').setAttribute('aria-hidden','true');$('setupView').classList.re('hidden');$('fen').value='';renderSetup();$('setupStatus').textContent='Starting position loaded. Standard chess position ready.';$('status').textContent='Starting position loaded.';}
+function startingPosition(){board=parseFenBoard(initialFen);side='w';castling='KQkq';epSquare=null;flipped=false;last=null;bestMove=null;clearTools();$('whiteTurn').classList.add('active');$('blackTurn').classList.remove('active');$('analysisView').classList.add('hidden');$('analysisView').setAttribute('aria-hidden','true');$('setupView').classList.remove('hidden');$('fen').value='';renderSetup();$('setupStatus').textContent='Starting position loaded. Standard chess position ready.';$('status').textContent='Starting position loaded.';}
 function clearBoard(){board=Array(64).fill(null);last=null;bestMove=null;clearTools();renderSetup();$('setupStatus').textContent='Position cleared.'}
 function loadFen(f){try{const a=f.trim().split(/\s+/);if(a.length<2)throw Error('Paste a valid FEN.');board=parseFenBoard(a[0]);side=a[1]==='b'?'b':'w';castling=a[2]&&a[2]!=='-'?a[2]:'-';epSquare=a[3]&&a[3]!=='-'?parseSquare(a[3]):null;last=null;bestMove=null;selectedSquare=null;$('whiteTurn').classList.toggle('active',side==='w');$('blackTurn').classList.toggle('active',side==='b');renderSetup();$('setupStatus').textContent='FEN loaded.'}catch(e){$('setupStatus').textContent='Invalid FEN: '+e.message}}
 function filterWhy(hit){return hit<0?'None of the eight filters found a matching move. The position has no move selected by this rule-set.':'Filter '+(hit+1)+' matched first: '+filterNames[hit]+'.'}
@@ -326,7 +326,7 @@ function showResults(result,engineMoves=[],engineStatus=''){
    if(filterCandidate&&uciMove(filterCandidate)===uciMove(engineBest)){
     $('why').textContent='Move satisfied an ENIGMA filter '+(result.hit+1)+'.';
    }else if(filterCandidate){
-    $('why').textContent='Move satisfied an ENIGMA filter ' '+san(board)+';
+    $('why').textContent='Move satisfied an ENIGMA filter '+san(filterCandidate,board)+' Move satisfied an ENIGMA filter';
    }else{
     $('why').textContent='Move satisfied an ENIGMA filter';
    }
