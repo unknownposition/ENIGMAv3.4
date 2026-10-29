@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ENIGMA v3.4 • Stockfish + Filters</title>
+<style>
+:root{--bg:#0b1711;--panel:#13251b;--panel2:#182d20;--line:rgba(238,242,223,.14);--cream:#eef2df;--muted:#aab7a6;--accent:#6f9852;--accent2:#83aa67;--dark:#31552e;--light:#eef2df;--selected:#a7cf80;--gold:#c9ad5b;--bad:#d57c71}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:radial-gradient(circle at 18% 0%,#15301f 0%,transparent 30%),radial-gradient(circle at 88% 12%,#15281f 0%,transparent 32%),var(--bg);color:var(--cream);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input{font:inherit}button{cursor:pointer}
+.app{width:100%;height:100%;display:flex;flex-direction:column}.header{height:56px;flex:0 0 56px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid var(--line);background:rgba(7,17,12,.92)}
+.brand{display:flex;align-items:center;gap:12px}.brand-mark{position:relative;width:32px;height:24px}.brand-mark:before{content:"";position:absolute;left:4px;top:7px;width:24px;height:14px;border-radius:50%;background:#8caf6c}.brand-mark:after{content:"";position:absolute;left:9px;top:2px;width:6px;height:6px;border-radius:50%;background:#8caf6c;box-shadow:9px 0 0 #8caf6c}.brand-mouth{position:absolute;left:11px;top:14px;width:11px;height:3px;border-radius:4px;background:var(--bg);z-index:2}.brand-name{font:24px Georgia,"Times New Roman",serif;letter-spacing:.26em}.brand-divider{width:1px;height:23px;background:rgba(238,242,223,.24)}.version{font-size:11px;letter-spacing:.16em;color:var(--muted)}.header-right{font-size:10px;letter-spacing:.34em;color:#cbd4c7}
+.main{flex:1;min-height:0;height:calc(100vh - 56px);padding:10px 20px 12px}.view{width:100%;height:100%}.hidden{display:none!important}
+.setup-view{display:flex;align-items:center;justify-content:center}.setup-content{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.board-frame{width:min(64vh,680px,78vw);aspect-ratio:1;padding:5px;border:1px solid rgba(238,242,223,.18);border-radius:12px;background:#0f2116;box-shadow:0 22px 55px rgba(0,0,0,.32);flex:0 0 auto}.board{width:100%;height:100%;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border-radius:8px;overflow:hidden}.sq{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;overflow:hidden}.sq.light{background:var(--light)}.sq.dark{background:var(--dark)}.sq.last{box-shadow:inset 0 0 0 999px rgba(167,207,128,.22)}.sq.click-selected{box-shadow:inset 0 0 0 4px var(--selected),inset 0 0 0 999px rgba(167,207,128,.10)}.sq.best{box-shadow:inset 0 0 0 4px var(--gold),inset 0 0 0 999px rgba(201,173,91,.14)}
+.coord{position:absolute;z-index:5;font-size:9px;font-weight:800;line-height:1;pointer-events:none}.rank{left:4px;top:4px}.file{right:4px;bottom:4px}.sq.light .coord{color:#43583f}.sq.dark .coord{color:#e2ead8}
+.piece{font-family:Georgia,"Times New Roman",serif;font-size:clamp(32px,7.2vh,82px);line-height:1;pointer-events:none;user-select:none;z-index:2}.white-piece{color:#fff;text-shadow:1.5px 1.5px 0 #162018,-1.5px 1.5px 0 #162018,1.5px -1.5px 0 #162018,-1.5px -1.5px 0 #162018,0 3px 3px rgba(0,0,0,.2)}.black-piece{color:#111;text-shadow:0 1px 0 rgba(255,255,255,.5),0 3px 3px rgba(0,0,0,.28)}
+.setup-tools{width:min(64vh,680px,78vw);display:flex;align-items:center;gap:6px}.palette{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;flex:1}.piece-btn{height:36px;padding:2px;border-radius:7px;border:1px solid var(--line);background:rgba(19,37,27,.92);display:flex;align-items:center;justify-content:center}.piece-btn.selected,.tool-btn.active{background:#2c4b2b;border-color:var(--selected);box-shadow:0 0 0 1px var(--selected)}.palette-glyph{font:27px Georgia,"Times New Roman",serif;line-height:1}.tool-btn,.action-btn,.fen-load{height:36px;padding:0 11px;border:1px solid var(--line);background:rgba(19,37,27,.92);color:var(--cream);border-radius:8px;font-size:11px;font-weight:800;white-space:nowrap}.action-row{width:min(64vh,680px,78vw);display:flex;align-items:center;gap:6px}.side-toggle{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:rgba(19,37,27,.92)}.side-toggle button{height:36px;min-width:34px;border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:850}.side-toggle button.active{background:#355733;color:#f0f4e8}.fen-row{width:min(64vh,680px,78vw);display:flex;gap:6px}.fen-row input{height:34px;flex:1;min-width:0;background:#0e1711;border:1px solid var(--line);border-radius:8px;color:var(--cream);padding:0 10px;outline:none;font-size:11px}.go-btn{width:min(230px,42vw);height:42px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-size:13px;font-weight:900;letter-spacing:.16em}.go-btn:disabled{opacity:.45;cursor:not-allowed}.status-line{min-height:15px;font-size:10px;color:var(--muted);text-align:center}
+.analysis-view{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center;max-width:1400px;margin:0 auto}.analysis-board-wrap{display:flex;justify-content:flex-end}.analysis-board-frame{width:min(72vh,46vw,640px);aspect-ratio:1;padding:5px;border:1px solid rgba(238,242,223,.18);border-radius:12px;background:#0f2116;box-shadow:0 22px 55px rgba(0,0,0,.32)}.analysis-card{width:min(100%,700px);justify-self:start;border:1px solid rgba(238,242,223,.14);background:linear-gradient(180deg,rgba(18,39,28,.97),rgba(12,28,19,.97));border-radius:16px;padding:16px;height:min(88vh,820px);overflow:hidden;display:flex;flex-direction:column}.analysis-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.analysis-title{display:flex;align-items:center;gap:10px}.analysis-icon{font-size:22px}.analysis-title h2{font:27px Georgia,"Times New Roman",serif;margin:0}.engine-pill{padding:6px 9px;border-radius:8px;background:#24372a;border:1px solid #53694a;color:#cbd7c2;font-size:9px;letter-spacing:.08em}.engine-pill:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#8eb76a;margin-right:6px}
+.filter-badge{padding:5px 8px;border-radius:7px;background:#3d3520;border:1px solid #8c7a42;color:#eadfbe;font-size:9px;letter-spacing:.08em}.best-card{background:#20382a;border:1px solid #4c6c47;border-radius:12px;padding:15px;margin-bottom:14px}.best-tag{display:inline-block;padding:4px 8px;border-radius:6px;background:#5f8b46;font-size:9px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}.best-line{display:flex;align-items:baseline;gap:9px}.best-move{font-size:30px;font-weight:900}.eval{font-size:12px;color:#becdb8}.why{margin-top:7px;color:#dae1d6;line-height:1.45;font-size:12px}.section-heading{font-size:9px;text-transform:uppercase;letter-spacing:.15em;color:#aab7a5;margin-bottom:6px}.pv-list{flex:1;min-height:0;overflow:auto}.pv-line{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(238,242,223,.08);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.pv-move{color:#f1eee7}.filter-row{display:grid;grid-template-columns:24px 1fr auto;gap:7px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(238,242,223,.08);font-size:11px}.filter-num{color:#8eaa7d;font-weight:900}.filter-hit{color:#dcebc9}.filter-miss{color:#79867a}.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 10px}.meta{background:#213128;border:1px solid rgba(238,242,223,.08);border-radius:9px;padding:9px}.meta .num{font-size:18px;font-weight:850}.meta small{display:block;margin-top:2px;color:#9eaa9c;font-size:9px;text-transform:uppercase}.analysis-actions{display:flex;gap:6px;margin-top:10px}.analysis-actions button{height:34px;border-radius:8px;border:1px solid var(--line);background:#172a1e;color:var(--cream);font-size:11px;font-weight:800;padding:0 11px}.status{min-height:17px;margin-top:8px;font-size:10px;color:var(--muted)}
+@media(max-width:900px){html,body{overflow:auto}.main{height:auto}.header-right{display:none}.setup-content{height:auto}.board-frame{width:min(82vw,62vh,560px)}.setup-tools,.action-row,.fen-row{width:min(82vw,560px)}.analysis-view{height:auto;grid-template-columns:1fr;padding:8px 0 18px}.analysis-board-wrap{justify-content:center}.analysis-board-frame{width:min(82vw,560px)}.analysis-card{width:100%;height:auto;min-height:520px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="header"><div class="brand"><span class="brand-mark"><span class="brand-mouth"></span></span><span class="brand-name">ENIGMA</span><span class="brand-divider"></span><span class="version">v3.4</span></div><div class="header-right">CHESS ANALYSIS</div></header>
+<main class="main">
+<section id="setupView" class="view setup-view"><div class="setup-content">
+<div class="board-frame"><div id="board" class="board"></div></div>
+<div class="setup-tools"><div id="palette" class="palette"></div><button id="eraser" class="tool-btn">Erase</button><span id="toolStatus" style="font-size:10px;color:var(--muted);white-space:nowrap">Move / place pieces</span></div>
+<div class="action-row"><button id="clear" class="action-btn">Clear</button><button id="start" class="action-btn">Starting position</button><button id="flip" class="action-btn">Flip ↕</button><div class="side-toggle"><button id="whiteTurn" class="active">W</button><button id="blackTurn">B</button></div></div>
+<div class="fen-row"><input id="fen" placeholder="Paste FEN…"><button id="load" class="fen-load">Load FEN</button></div>
+<button id="go" class="go-btn">GO</button><div id="setupStatus" class="status-line">Ready.</div>
+</div></section>
+<section id="analysisView" class="view analysis-view hidden" aria-hidden="true"><div class="analysis-board-wrap"><div class="analysis-board-frame"><div id="analysisBoard" class="board"></div></div></div>
+<section class="analysis-card"><div class="analysis-head"><div class="analysis-title"><div class="analysis-icon">♛</div><h2>Stockfish + Filters</h2></div><div id="engineBadge" class="filter-badge">ENGINE STARTING…</div></div>
+<div class="best-card"><div class="best-tag">Best Move</div><div class="best-line"><div id="best" class="best-move">—</div><div id="filterName" class="eval">—</div></div><div id="why" class="why">The filter system will test the legal moves in order.</div></div>
+<div class="section-heading">Filter sequence</div><div id="filterList" class="pv-list"></div>
+<div class="meta-grid"><div class="meta"><div id="legalCount" class="num">—</div><small>Legal moves</small></div><div class="meta"><div id="turnInfo" class="num">White</div><small>Side to move</small></div></div>
+<div class="analysis-actions"><button id="back">← Edit position</button><button id="newPosition">Starting position</button></div><div id="status" class="status">Ready.</div>
+</section></section>
+</main></div>
+<script>
+(function(){
+'use strict';
+const files='abcdefgh',ranks='87654321';
+const glyph={wp:'♙',wn:'♘',wb:'♗',wr:'♖',wq:'♕',wk:'♔',bp:'♟',bn:'♞',bb:'♝',br:'♜',bq:'♛',bk:'♚'};
+const palette=[['wq','Queen'],['wr','Rook'],['wb','Bishop'],['wn','Knight'],['wp','Pawn'],['wk','King'],['bq','Queen'],['br','Rook'],['bb','Bishop'],['bn','Knight'],['bp','Pawn'],['bk','King']];
+const values={p:1,n:3,b:3,r:5,q:9,k:100};
+const filterNames=[
+ 'Does any move force checkmate immediately?',
+ 'Does any checking move lead to a short mating sequence?',
+ 'Does the opponent have a checkmate? If yes, does any move avoid checkmate?',
+ 'Does any non-checking move lead to a short mating sequence?',
+ 'Does any move allow promotion to a piece?',
+ 'Does any move give a check that does not lose material?',
+ 'Does any move gain undefended material or defend a hanging piece?',
+ 'Does any move attack a piece?',
+ 'Does any move castle?',
+ 'Does any move develop a piece?'
+];
+let board=[],tool=null,flipped=false,side='w',selectedSquare=null,last=null,bestMove=null,castling='KQkq',epSquare=null;
+const $=id=>document.getElementById(id);
+const idx=(r,c)=>r*8+c, inBoard=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+function cloneBoard(b){return b.slice()}
+function colorOf(p){return p?p[0]:null}
+function typeOf(p){return p?p[1]:null}
+function parseFenBoard(part){const out=[];for(const row of part.split('/')){for(const ch of row){if(/[1-8]/.test(ch)){for(let n=0;n<+ch;n++)out.push(null)}else{const c=ch===ch.toUpperCase()?'w':'b';const t=ch.toLowerCase();if(!glyph[c+t])throw Error('Invalid piece '+ch);out.push(c+t)}}}if(out.length!==64)throw Error('Board must contain 64 squares.');return out}
+function currentFen(){let out='';for(let r=0;r<8;r++){let empty=0;for(let c=0;c<8;c++){const p=board[idx(r,c)];if(!p){empty++;continue}if(empty){out+=empty;empty=0}out+=p[0]==='w'?p[1].toUpperCase():p[1]}if(empty)out+=empty;if(r<7)out+='/'}return out+' '+side+' '+(castling||'-')+' '+(epSquare===null?'-':squareName(epSquare))+' 0 1'}
+function squareName(i){return files[i%8]+ranks[Math.floor(i/8)]}
+function parseSquare(s){return (8-Number(s[1]))*8+files.indexOf(s[0])}
+function findKing(b,color){return b.findIndex(p=>p===color+'k')}
+function isSquareAttacked(b,sq,byColor){
+ const r=Math.floor(sq/8),c=sq%8;
+ const pawnDir=byColor==='w'?1:-1;
+ for(const dc of [-1,1]){const rr=r+pawnDir;if(inBoard(rr,c+dc)&&b[idx(rr,c+dc)]===byColor+'p')return true}
+ for(const [dr,dc] of [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]){const rr=r+dr,cc=c+dc;if(inBoard(rr,cc)&&b[idx(rr,cc)]===byColor+'n')return true}
+ for(const [dr,dc,types] of [[1,0,'rq'],[-1,0,'rq'],[0,1,'rq'],[0,-1,'rq'],[1,1,'bq'],[1,-1,'bq'],[-1,1,'bq'],[-1,-1,'bq']]){let rr=r+dr,cc=c+dc;while(inBoard(rr,cc)){const p=b[idx(rr,cc)];if(p){if(p[0]===byColor&&types.includes(p[1]))return true;break}rr+=dr;cc+=dc}}
+ for(const dr of [-1,0,1])for(const dc of [-1,0,1])if(dr||dc){const rr=r+dr,cc=c+dc;if(inBoard(rr,cc)&&b[idx(rr,cc)]===byColor+'k')return true}
+ return false;
+}
+function inCheck(b,color){const k=findKing(b,color);return k<0||isSquareAttacked(b,k,color==='w'?'b':'w')}
+function makeMove(b,m){const n=cloneBoard(b);const p=n[m.from];n[m.from]=null;if(m.enPassant)n[m.captureSquare]=null;n[m.to]=m.promotion?m.color+m.promotion:p;if(m.castle){const rank=Math.floor(m.from/8);if(m.castle==='K'){n[idx(rank,7)]=null;n[idx(rank,5)]=m.color+'r'}else{n[idx(rank,0)]=null;n[idx(rank,3)]=m.color+'r'}}return n}
+
+function pseudoMoves(b,color){
+  const moves=[];
+  for(let from=0;from<64;from++){
+    const piece=b[from];
+    if(!piece||piece[0]!==color) continue;
+    const type=piece[1], r=Math.floor(from/8), c=from%8;
+    const add=(to,extra={})=>{ if(to<0||to>=64)return; const target=b[to]; if(target&&target[0]===color)return; moves.push({from,to,color,piece:type,capture:target||null,...extra}); };
+    if(type==='p'){
+      const dr=color==='w'?-1:1, start=color==='w'?6:1, promoRow=color==='w'?0:7;
+      const oneR=r+dr;
+      if(inBoard(oneR,c)&&!b[idx(oneR,c)]){
+        const to=idx(oneR,c);
+        if(oneR===promoRow){for(const pr of ['q','r','b','n'])add(to,{promotion:pr});}else add(to);
+        const twoR=r+2*dr;
+        if(r===start&&!b[idx(twoR,c)])add(idx(twoR,c));
+      }
+      for(const dc of [-1,1]){
+        const rr=r+dr,cc=c+dc;if(!inBoard(rr,cc))continue;const to=idx(rr,cc),target=b[to];
+        if(target&&target[0]!==color){
+          if(rr===promoRow){for(const pr of ['q','r','b','n'])add(to,{promotion:pr});}else add(to);
+        }else if(epSquare===to){
+          const capSq=idx(r,cc);if(b[capSq]=== (color==='w'?'bp':'wp'))add(to,{enPassant:true,capture:b[capSq],captureSquare:capSq});
+        }
+      }
+    } else if(type==='n'){
+      for(const [dr,dc] of [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]])if(inBoard(r+dr,c+dc))add(idx(r+dr,c+dc));
+    } else if(type==='b'||type==='r'||type==='q'){
+      const dirs=[]; if(type==='b'||type==='q')dirs.push([1,1],[1,-1],[-1,1],[-1,-1]); if(type==='r'||type==='q')dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+      for(const [dr,dc] of dirs){let rr=r+dr,cc=c+dc;while(inBoard(rr,cc)){const to=idx(rr,cc);if(b[to]){if(b[to][0]!==color)add(to);break;}add(to);rr+=dr;cc+=dc;}}
+    } else if(type==='k'){
+      for(const dr of [-1,0,1])for(const dc of [-1,0,1])if(dr||dc)if(inBoard(r+dr,c+dc))add(idx(r+dr,c+dc));
+      const enemy=color==='w'?'b':'w';
+      if(!inCheck(b,color)) {
+        const rank=color==='w'?7:0;
+        if((color==='w'?castling.includes('K'):castling.includes('k')) && b[idx(rank,5)]===null && b[idx(rank,6)]===null && b[idx(rank,7)]===color+'r' && !isSquareAttacked(b,idx(rank,5),enemy) && !isSquareAttacked(b,idx(rank,6),enemy)) add(idx(rank,6),{castle:'K'});
+        if((color==='w'?castling.includes('Q'):castling.includes('q')) && b[idx(rank,1)]===null && b[idx(rank,2)]===null && b[idx(rank,3)]===null && b[idx(rank,0)]===color+'r' && !isSquareAttacked(b,idx(rank,3),enemy) && !isSquareAttacked(b,idx(rank,2),enemy)) add(idx(rank,2),{castle:'Q'});
+      }
+    }
+  }
+  return moves;
+}
+
+function applyStateMove(m){
+  const p=board[m.from];
+  if(p==='wk')castling=castling.replace('K','').replace('Q','');
+  if(p==='bk')castling=castling.replace('k','').replace('q','');
+  if(p==='wr'&&m.from===63)castling=castling.replace('K','');
+  if(p==='wr'&&m.from===56)castling=castling.replace('Q','');
+  if(p==='br'&&m.from===7)castling=castling.replace('k','');
+  if(p==='br'&&m.from===0)castling=castling.replace('q','');
+  if(m.capture&&m.to===63)castling=castling.replace('K','');
+  if(m.capture&&m.to===56)castling=castling.replace('Q','');
+  if(m.capture&&m.to===7)castling=castling.replace('k','');
+  if(m.capture&&m.to===0)castling=castling.replace('q','');
+  epSquare=null;
+  if(p&&p[1]==='p'&&Math.abs(m.to-m.from)===16)epSquare=(m.to+m.from)/2;
+}
+function legalMoves(b,color){return pseudoMoves(b,color).filter(m=>!inCheck(makeMove(b,m),color))}
+function isCheckmate(b,color){return inCheck(b,color)&&legalMoves(b,color).length===0}
+function isStalemate(b,color){return !inCheck(b,color)&&legalMoves(b,color).length===0}
+function material(b,color){let n=0;for(const p of b)if(p&&p[0]===color&&p[1]!=='k')n+=values[p[1]];return n}
+function defendedBy(b,sq,color){return isSquareAttacked(b,sq,color)}
+function attackedAfterMove(b,m,color){return isSquareAttacked(b,m.to,color==='w'?'b':'w')}
+function moveGivesCheck(b,m){return inCheck(makeMove(b,m),m.color==='w'?'b':'w')}
+function moveLosesMaterial(b,m){const before=material(b,m.color);const after=material(makeMove(b,m),m.color);return after<before}
+
+function moveSafety(b,m){
+ // Estimate whether the moved piece is left hanging after the move.
+ // This is a lightweight tactical heuristic, not a full exchange evaluation.
+ const after=makeMove(b,m);
+ const color=m.color, opp=color==='w'?'b':'w';
+ const piece=after[m.to];
+ if(!piece) return {safe:false, attacked:false, defended:false, reason:'No piece on destination'};
+ // A legal move should not leave the king in check; king safety is handled by legalMoves().
+ if(piece[1]==='k') return {safe:!inCheck(after,color), attacked:false, defended:false, reason:'King move'};
+ const attacked=isSquareAttacked(after,m.to,opp);
+ const defended=isSquareAttacked(after,m.to,color);
+ // If the piece is attacked but undefended, consider it unsafe.
+ // If defended, this simple check treats it as reasonably safe; it does not
+ // calculate the full sequence of captures or compare every attacker/defender.
+ const safe=!attacked||defended;
+ return {safe,attacked,defended,reason:safe?'Not left undefended':'Attacked and undefended'};
+}
+function hasUndefendedGain(b,m){
+ const target=b[m.to];
+ if(target&&target[0]!==m.color&&typeOf(target)!=='k'){const enemy=target[0];const targetVal=values[target[1]];const nb=makeMove(b,m);const targetSq=m.to;const defended=isSquareAttacked(b,targetSq,enemy);return !defended||values[m.piece]<targetVal}
+ // Also detect a move that wins another hanging enemy piece by attacking it with a defended piece.
+ const nb=makeMove(b,m);for(let sq=0;sq<64;sq++){const p=nb[sq];if(p&&p[0]!==m.color&&p[1]!=='k'&&!isSquareAttacked(nb,sq,p[0]))return true}
+ return false;
+}
+function defendsHanging(b,m){
+ const before=b, after=makeMove(b,m), color=m.color, opp=color==='w'?'b':'w';
+ for(let sq=0;sq<64;sq++){
+  const p=before[sq], q=after[sq];
+  if(p&&p[0]===color&&p[1]!=='k'&&q===p){
+   const wasAttacked=isSquareAttacked(before,sq,opp);
+   const nowDefended=isSquareAttacked(after,sq,color);
+   const stillAttacked=isSquareAttacked(after,sq,opp);
+   if(wasAttacked && nowDefended && stillAttacked)return true;
+  }
+ }
+ return false;
+}
+function attacksAPiece(b,m){
+ if(m.capture)return false;
+ const before=b, after=makeMove(b,m), opp=m.color==='w'?'b':'w';
+ for(let sq=0;sq<64;sq++){const p=after[sq];if(p&&p[0]===opp&&p[1]!=='k'&&isSquareAttacked(after,sq,m.color)&&!isSquareAttacked(before,sq,m.color))return true}
+ return false;
+}
+function developsPiece(b,m){
+ const p=b[m.from];if(!p||!['n','b'].includes(p[1]))return false;
+ const home=m.color==='w'?7:0;const backSquares=[idx(home,1),idx(home,2),idx(home,5),idx(home,6)];
+ if(!backSquares.includes(m.from))return false;
+ return !backSquares.includes(m.to);
+}
+function san(m,b){if(m.castle)return m.castle==='K'?'O-O':'O-O-O';const t=m.piece==='p'?'':m.piece.toUpperCase();const cap=m.capture?'x':' ';let s=t+(cap==='x'?'x':'')+squareName(m.to);if(m.promotion)s+='='+m.promotion.toUpperCase();return s}
+function opponentHasMateThreat(b,color){const opp=color==='w'?'b':'w';for(const m of legalMoves(b,opp)){if(isCheckmate(makeMove(b,m),color))return true}return false}
+function opponentHasMateThreatAfter(b,color){return opponentHasMateThreat(b,color)}
+function hasMateInOne(b,color){
+ const ms=legalMoves(b,color);
+ return ms.some(m=>isCheckmate(makeMove(b,m),color==='w'?'b':'w'));
+}
+function matingRepliesAfter(b,move,color){
+ const after=makeMove(b,move),opp=color==='w'?'b':'w';
+ const replies=legalMoves(after,opp);
+ if(!replies.length)return false;
+ // A move qualifies when every legal reply allows an immediate mate on the next move.
+ return replies.every(reply=>{
+  const afterReply=makeMove(after,reply);
+  const myReplies=legalMoves(afterReply,color);
+  return myReplies.some(fin=>isCheckmate(makeMove(afterReply,fin),opp));
+ });
+}
+function opponentMateThreat(b,color){
+ const opp=color==='w'?'b':'w';
+ return hasMateInOne(b,opp);
+}
+function avoidsMateThreat(b,m,color){
+ const after=makeMove(b,m),opp=color==='w'?'b':'w';
+ return !hasMateInOne(after,opp);
+}
+function filterMoves(b,color,moves){
+ const results=[];
+ // 1. Immediate checkmate.
+ results.push(moves.filter(m=>isCheckmate(makeMove(b,m),color==='w'?'b':'w')));
+ // 2. A checking move that starts a forced mating sequence (mate after every legal reply).
+ results.push(moves.filter(m=>moveGivesCheck(b,m)&&matingRepliesAfter(b,m,color)));
+ // 3. Opponent currently threatens mate in one; candidate prevents it.
+ const threat=opponentMateThreat(b,color);
+ results.push(threat?moves.filter(m=>avoidsMateThreat(b,m,color)):[]);
+ // 4. A non-checking move that creates a forced mating sequence.
+ results.push(moves.filter(m=>!moveGivesCheck(b,m)&&matingRepliesAfter(b,m,color)));
+ // 5. Promotion.
+ results.push(moves.filter(m=>!!m.promotion));
+ // 6. Check without losing material, with a basic safety check.
+ results.push(moves.filter(m=>moveGivesCheck(b,m)&&!moveLosesMaterial(b,m)&&moveSafety(b,m).safe));
+ // 7. Gain undefended material or defend a hanging piece.
+ results.push(moves.filter(m=>hasUndefendedGain(b,m)||defendsHanging(b,m)));
+ // 8. Newly attacks an opponent piece.
+ results.push(moves.filter(m=>attacksAPiece(b,m)));
+ // 9. Castling.
+ results.push(moves.filter(m=>!!m.castle));
+ // 10. Develop a knight or bishop.
+ results.push(moves.filter(m=>developsPiece(b,m)));
+ return {results,threat};
+}
+function materialDelta(b,m){
+ const color=m.color,opp=color==='w'?'b':'w';
+ const before=material(b,color)-material(b,opp);
+ const afterBoard=makeMove(b,m);
+ const after=material(afterBoard,color)-material(afterBoard,opp);
+ return after-before;
+}
+function tieBreak(candidates,b,filterIndex){
+ const score=m=>{
+  const delta=materialDelta(b,m),captureValue=m.capture?(values[typeOf(m.capture)]||0):0;
+  const safety=moveSafety(b,m).safe?1:0;
+  const promotion=m.promotion?({q:9,r:5,b:3,n:3}[m.promotion]||0):0;
+  const check=moveGivesCheck(b,m)?1:0;
+  const attackedValue=(()=>{const nb=makeMove(b,m);let v=0;for(let i=0;i<64;i++){const p=nb[i];if(p&&p[0]!==m.color&&p[1]!=='k'&&isSquareAttacked(nb,i,m.color))v=Math.max(v,values[p[1]]||0)}return v})();
+  if(filterIndex===0)return check*100000+captureValue*100+delta*10+safety;
+  if(filterIndex===1||filterIndex===3)return check*100000+safety*10+delta;
+  if(filterIndex===4)return promotion*100+safety*10+delta;
+  if(filterIndex===5)return safety*100+delta*10+check;
+  if(filterIndex===6)return captureValue*100+delta*20+safety*5;
+  if(filterIndex===7)return attackedValue*20+safety*5+delta;
+  return safety*10+delta+check;
+ };
+ return candidates.slice().sort((a,bm)=>score(bm)-score(a)||uciMove(a).localeCompare(uciMove(bm)))[0]||null;
+}
+function chooseBest(b,color){
+ const moves=legalMoves(b,color),{results,threat}=filterMoves(b,color,moves);
+ let hit=-1,candidate=null;
+ for(let i=0;i<results.length;i++){if(results[i].length){hit=i;candidate=tieBreak(results[i],b,i);break}}
+ return {moves,results,hit,candidate,threat};
+}
+function squareMarkup(containerId){const b=$(containerId);b.innerHTML='';for(let i=0;i<64;i++){const d=document.createElement('div');d.className='sq '+(((Math.floor(i/8)+i%8)%2===0)?'light':'dark');b.appendChild(d)}}
+function renderInto(containerId){const b=$(containerId),cells=[...b.children];for(let i=0;i<64;i++){const idx2=flipped?63-i:i,d=cells[i];d.dataset.index=String(idx2);d.className='sq '+(((Math.floor(idx2/8)+idx2%8)%2===0)?'light':'dark');if(last&&(idx2===last.from||idx2===last.to))d.classList.add('last');if(bestMove&&(idx2===bestMove.from||idx2===bestMove.to))d.classList.add('best');d.innerHTML='';const p=board[idx2];if(p){const s=document.createElement('span');s.className='piece '+(p[0]==='w'?'white-piece':'black-piece');s.textContent=glyph[p];d.appendChild(s)}if(i%8===0){const r=document.createElement('span');r.className='coord rank';r.textContent=ranks[Math.floor(idx2/8)];d.appendChild(r)}if(Math.floor(i/8)===7){const f=document.createElement('span');f.className='coord file';f.textContent=files[idx2%8];d.appendChild(f)}if(selectedSquare===idx2)d.classList.add('click-selected')}}
+function renderSetup(){renderInto('board');$('setupStatus').textContent='Ready.'}
+function renderAnalysis(){renderInto('analysisBoard')}
+function clearTools(){tool=null;selectedSquare=null;document.querySelectorAll('.piece-btn,.tool-btn').forEach(x=>x.classList.remove('selected','active'));$('toolStatus').textContent='Move / place pieces'}
+function paletteInit(){const p=$('palette');palette.forEach(([k,name])=>{const b=document.createElement('button');b.className='piece-btn';b.title=(k[0]==='w'?'White ':'Black ')+name;const s=document.createElement('span');s.className='palette-glyph '+(k[0]==='w'?'white-piece':'black-piece');s.textContent=glyph[k];b.appendChild(s);b.onclick=()=>{tool=k;selectedSquare=null;$('toolStatus').textContent=(k[0]==='w'?'White ':'Black ')+name;document.querySelectorAll('.piece-btn,.tool-btn').forEach(x=>x.classList.remove('selected','active'));b.classList.add('selected')};p.appendChild(b)})}
+function bindBoard(id){
+ const b=$(id); let dragFrom=null, suppressClick=false;
+ b.addEventListener('click',e=>{
+  if(suppressClick){suppressClick=false;return;}
+  const sq=e.target.closest('.sq'); if(!sq)return; const i=Number(sq.dataset.index);
+  if(tool==='erase'){board[i]=null;selectedSquare=null;last=null;renderSetup();return;}
+  if(tool){board[i]=tool;selectedSquare=null;last=null;renderSetup();return;}
+  if(selectedSquare!==null){
+   if(selectedSquare!==i && board[selectedSquare]){const m={from:selectedSquare,to:i,color:side,piece:board[selectedSquare][1],capture:board[i]||null};board[i]=board[selectedSquare];board[selectedSquare]=null;applyStateMove(m);last={from:m.from,to:m.to};}
+   selectedSquare=null;renderSetup();return;
+  }
+  if(board[i]){selectedSquare=i;renderSetup();}
+ });
+ b.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return; const sq=e.target.closest('.sq'); if(!sq)return; const i=Number(sq.dataset.index);
+  if(board[i]){dragFrom=i;sq.setPointerCapture?.(e.pointerId);e.preventDefault();}
+ });
+ b.addEventListener('pointerup',e=>{
+  if(dragFrom===null)return;
+  const from=dragFrom; dragFrom=null; const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.sq');
+  if(hit && hit.closest('.board')){const to=Number(hit.dataset.index);if(to!==from && board[from]){const m={from,to,color:side,piece:board[from][1],capture:board[to]||null};board[to]=board[from];board[from]=null;applyStateMove(m);selectedSquare=null;last={from,to};suppressClick=true;renderSetup();return;}}
+  suppressClick=true;selectedSquare=from;renderSetup();
+ });
+ b.addEventListener('pointercancel',()=>{dragFrom=null;});
+ b.addEventListener('contextmenu',e=>{e.preventDefault();const sq=e.target.closest('.sq');if(!sq)return;const i=Number(sq.dataset.index);board[i]=null;selectedSquare=null;last=null;renderSetup();});
+}
+
+function startingPosition(){board=parseFenBoard(initialFen);side='w';castling='KQkq';epSquare=null;flipped=false;last=null;bestMove=null;clearTools();$('whiteTurn').classList.add('active');$('blackTurn').classList.remove('active');renderSetup();$('setupStatus').textContent='Starting position loaded.';}
+function clearBoard(){board=Array(64).fill(null);last=null;bestMove=null;clearTools();renderSetup();$('setupStatus').textContent='Position cleared.'}
+function loadFen(f){try{const a=f.trim().split(/\s+/);if(a.length<2)throw Error('Paste a valid FEN.');board=parseFenBoard(a[0]);side=a[1]==='b'?'b':'w';castling=a[2]&&a[2]!=='-'?a[2]:'-';epSquare=a[3]&&a[3]!=='-'?parseSquare(a[3]):null;last=null;bestMove=null;selectedSquare=null;$('whiteTurn').classList.toggle('active',side==='w');$('blackTurn').classList.toggle('active',side==='b');renderSetup();$('setupStatus').textContent='FEN loaded.'}catch(e){$('setupStatus').textContent='Invalid FEN: '+e.message}}
+function filterWhy(hit){return hit<0?'None of the eight filters found a matching move. The position has no move selected by this rule-set.':'Filter '+(hit+1)+' matched first: '+filterNames[hit]+'.'}
+function showResults(result,engineMoves=[],engineStatus=''){
+ const filterCandidate=result.candidate;
+ const engineBest=engineMoves.length?parseUciMove(engineMoves[0].uci,result.moves):null;
+ const chosen=engineBest||filterCandidate;
+ bestMove=chosen;
+ if(chosen){
+  $('best').textContent=san(chosen,board);
+  $('filterName').textContent=engineBest?'Stockfish best move':(result.hit>=0?'Filter '+(result.hit+1):'Filter fallback');
+  if(engineBest){
+   if(filterCandidate&&uciMove(filterCandidate)===uciMove(engineBest)){
+    $('why').textContent='Stockfish selected this move, and it also matches ENIGMA Filter '+(result.hit+1)+'.';
+   }else if(filterCandidate){
+    $('why').textContent='Stockfish selected this move after its engine search. ENIGMA’s first matching filter suggested '+san(filterCandidate,board)+' (Filter '+(result.hit+1)+'), so the two methods disagree here.';
+   }else{
+    $('why').textContent='Stockfish selected this move after its engine search. ENIGMA’s filters did not identify a move in this position.';
+   }
+  }else{
+   $('why').textContent='Stockfish was unavailable, so this is ENIGMA’s filter-based fallback, not a Stockfish-verified best move.';
+  }
+ }else{
+  $('best').textContent='—';$('filterName').textContent='No legal move';$('why').textContent='No legal moves were returned. Check that the position is legal and both kings are present.';
+ }
+ $('legalCount').textContent=String(result.moves.length);
+ $('turnInfo').textContent=side==='w'?'White':'Black';
+ const list=$('filterList');list.innerHTML='';
+ for(let i=0;i<10;i++){
+  const row=document.createElement('div');row.className='filter-row';
+  const n=document.createElement('div');n.className='filter-num';n.textContent=String(i+1);
+  const text=document.createElement('div');text.className=i===result.hit?'filter-hit':'filter-miss';text.textContent=filterNames[i];
+  const count=document.createElement('div');count.style.color=i===result.hit?'#d9c889':'#728071';
+  count.textContent=(result.results[i]||[]).length+' move'+((result.results[i]||[]).length===1?'':'s');
+  row.append(n,text,count);list.appendChild(row);
+ }
+ const top=engineMoves.slice(0,3).map((x,i)=>(i+1)+'. '+x.uci).join('   ');
+ $('status').textContent=(engineBest?'Stockfish search completed. ':'Stockfish did not return a usable move. ')+(top?'Top engine moves: '+top+'. ':'')+engineStatus;
+ $('engineBadge').textContent=engineBest?'STOCKFISH RUNNING':'ENGINE UNAVAILABLE';
+ $('engineBadge').style.background=engineBest?'#203d28':'#4a2925';
+ $('engineBadge').style.borderColor=engineBest?'#638451':'#9a5c50';
+ renderAnalysis();
+}
+function uciMove(m){return squareName(m.from)+squareName(m.to)+(m.promotion||'')}
+function parseUciMove(uci,moves){
+ if(!uci||uci==='(none)'||uci==='0000')return null;
+ uci=uci.toLowerCase();
+ const known=moves.find(m=>uciMove(m)===uci);
+ if(known)return known;
+ // Trust Stockfish's legal UCI result even if ENIGMA's lightweight move generator missed it.
+ if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci))return null;
+ const from=parseSquare(uci.slice(0,2)),to=parseSquare(uci.slice(2,4)),piece=board[from];
+ if(!piece||piece[0]!==side)return null;
+ const m={from,to,color:side,piece:piece[1],capture:board[to]||null};
+ if(uci.length===5)m.promotion=uci[4];
+ if(piece[1]==='k'&&Math.abs((from%8)-(to%8))===2)m.castle=to%8>from%8?'K':'Q';
+ if(piece[1]==='p'&&epSquare===to&&!board[to]&&(from%8)!==(to%8)){
+  m.enPassant=true;m.captureSquare=from<to?to-8:to+8;m.capture=board[m.captureSquare]||null;
+ }
+ return m;
+}
+let sfWorker=null,sfReady=false,sfInitPromise=null,sfSearchTimer=null,sfSearchResolve=null,sfSearchBuffer='',sfLastError='';
+function startStockfish(){
+ if(sfInitPromise)return sfInitPromise;
+ sfInitPromise=new Promise((resolve,reject)=>{
+  let settled=false;
+  const timeout=setTimeout(()=>{if(!settled){settled=true;sfLastError='Stockfish did not become ready. Check the engine JS and WASM files in /engine.';reject(Error(sfLastError));}},12000);
+  try{
+   sfWorker=new Worker(new URL('engine/stockfish-18-lite-single.js',document.baseURI));
+   sfWorker.onmessage=e=>{
+    const line=String(e.data||'').trim();
+    if(line==='uciok'){sfWorker.postMessage('isready');return;}
+    if(line==='readyok'){
+     sfReady=true;
+     if(!settled){settled=true;clearTimeout(timeout);resolve();}
+     return;
+    }
+    if(line.startsWith('bestmove ')){
+     if(sfSearchTimer){clearTimeout(sfSearchTimer);sfSearchTimer=null;}
+     const best=line.split(/\s+/)[1];
+     const byRank=new Map();
+     for(const ln of sfSearchBuffer.split(/\r?\n/)){
+      if(!ln.startsWith('info '))continue;
+      const pvMatch=ln.match(/\bpv\s+([a-h][1-8][a-h][1-8][qrbn]?)/i);
+      if(!pvMatch)continue;
+      const rankMatch=ln.match(/\bmultipv\s+(\d+)/i);
+      const rank=rankMatch?Number(rankMatch[1]):1;
+      if(!byRank.has(rank))byRank.set(rank,pvMatch[1].toLowerCase());
+     }
+     if(best&&best!=='(none)'&&best!=='0000')byRank.set(1,best.toLowerCase());
+     const moves=[...byRank.entries()].sort((a,b)=>a[0]-b[0]).map(([rank,uci])=>({rank,uci})).slice(0,3);
+     const done=sfSearchResolve;sfSearchResolve=null;
+     if(done)done({moves,status:'Stockfish search finished.'});
+     return;
+    }
+    if(sfSearchResolve)sfSearchBuffer+=line+'\n';
+   };
+   sfWorker.onerror=()=>{
+    sfLastError='Stockfish worker failed to load. Confirm engine/stockfish-18-lite-single.js and engine/stockfish-18-lite-single.wasm are committed to the website.';
+    if(!settled){settled=true;clearTimeout(timeout);reject(Error(sfLastError));}
+    if(sfSearchResolve){const done=sfSearchResolve;sfSearchResolve=null;done({moves:[],status:sfLastError});}
+   };
+   sfWorker.postMessage('uci');
+  }catch(err){clearTimeout(timeout);settled=true;sfLastError=err.message;reject(err);}
+ });
+ return sfInitPromise;
+}
+async function engineTopThree(fen){
+ await startStockfish();
+ return new Promise((resolve)=>{
+  if(!sfWorker||!sfReady){resolve({moves:[],status:sfLastError||'Stockfish is not ready.'});return;}
+  if(sfSearchTimer)clearTimeout(sfSearchTimer);
+  sfSearchBuffer='';sfSearchResolve=resolve;
+  sfSearchTimer=setTimeout(()=>{
+   sfSearchTimer=null;const done=sfSearchResolve;sfSearchResolve=null;
+   if(done)done({moves:[],status:'Stockfish search timed out.'});
+  },30000);
+  sfWorker.postMessage('setoption name MultiPV value 3');
+  sfWorker.postMessage('ucinewgame');
+  sfWorker.postMessage('position fen '+fen);
+  sfWorker.postMessage('go depth 17');
+ });
+}
+async function go(){
+ try{
+  $('go').disabled=true;$('setupStatus').textContent='Starting Stockfish and analysing the position…';
+  $('engineBadge').textContent='ENGINE STARTING…';
+  let engine={moves:[],status:'Stockfish unavailable; filter fallback used.'};
+  try{engine=await engineTopThree(currentFen());}catch(e){engine.status=e.message;sfLastError=e.message;console.error('Stockfish error:',e);}
+  let result;
+  try{result=chooseBest(board,side);}catch(e){
+   console.error('Filter analysis error:',e);
+   result={moves:[],results:Array.from({length:10},()=>[]),hit:-1,candidate:null,threat:false};
+   $('setupStatus').textContent='Filter analysis warning: '+e.message;
+  }
+  // If Stockfish found a legal move, it is the move shown as best. Filter logic is supporting analysis only.
+  $('setupView').classList.add('hidden');$('analysisView').classList.remove('hidden');$('analysisView').setAttribute('aria-hidden','false');
+  showResults(result,engine.moves,engine.status);
+ }catch(e){$('setupStatus').textContent='Analysis error: '+e.message;console.error(e)}
+ finally{$('go').disabled=false}
+}
+function back(){$('analysisView').classList.add('hidden');$('setupView').classList.remove('hidden');bestMove=null;last=null;renderSetup()}
+function init(){squareMarkup('board');squareMarkup('analysisBoard');bindBoard('board');bindBoard('analysisBoard');paletteInit();$('eraser').onclick=()=>{tool='erase';selectedSquare=null;$('toolStatus').textContent='Eraser';document.querySelectorAll('.piece-btn').forEach(b=>b.classList.remove('selected'));$('eraser').classList.add('active')};$('clear').onclick=clearBoard;$('start').onclick=startingPosition;$('flip').onclick=()=>{flipped=!flipped;renderSetup()};$('whiteTurn').onclick=()=>{side='w';$('whiteTurn').classList.add('active');$('blackTurn').classList.remove('active')};$('blackTurn').onclick=()=>{side='b';$('blackTurn').classList.add('active');$('whiteTurn').classList.remove('active')};$('load').onclick=()=>loadFen($('fen').value);$('fen').addEventListener('keydown',e=>{if(e.key==='Enter')loadFen($('fen').value)});$('go').onclick=go;$('back').onclick=back;$('newPosition').onclick=()=>{startingPosition();back()};startingPosition()}
+init();
+})();
+</script>
+</body>
+</html>
